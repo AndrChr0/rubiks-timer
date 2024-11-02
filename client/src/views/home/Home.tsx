@@ -1,106 +1,124 @@
 import { useState, useEffect } from "react";
 
 export default function Home() {
-  const [timerCount, setTimerCount] = useState<number>(0);
-  const [isTimerSet, setTimer] = useState(false);
+  const [time, setTime] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
   const [bestTime, setBestTime] = useState<number | null>(null);
 
-  console.log(bestTime);
+  useEffect(() => {
+    const storedBestTime = localStorage.getItem("best-time");
+    if (storedBestTime) {
+      setBestTime(JSON.parse(storedBestTime));
+    }
+  }, []);
 
   useEffect(() => {
-    if (localStorage.getItem("best-time") === null) {
-      localStorage.setItem("best-time", JSON.stringify(0));
-    }
-
-    const bestTime = localStorage.getItem("best-time");
-    if (bestTime) {
-      setBestTime(JSON.parse(bestTime));
-    }
-    let interval: NodeJS.Timeout;
-    if (isTimerSet) {
-      interval = setInterval(() => {
-        setTimerCount((prev) => prev + 1);
-      }, 1000);
+    let intervalId: NodeJS.Timeout;
+    if (isRunning) {
+      intervalId = setInterval(() => {
+        setTime((prev) => prev + 10);
+      }, 10);
     }
     return () => {
-      if (interval) clearInterval(interval);
+      if (intervalId) clearInterval(intervalId);
     };
-  }, [isTimerSet]);
+  }, [isRunning]);
 
   useEffect(() => {
     const handleSpacePress = (event: KeyboardEvent) => {
       if (event.code === "Space") {
-        setTimer((prev) => !prev);
+        setIsRunning((prev) => !prev);
+      }
+    };
+
+    const habdleResetPress = (event: KeyboardEvent) => {
+      if (event.code === "KeyR") {
+        handleReset();
       }
     };
 
     window.addEventListener("keydown", handleSpacePress);
+    window.addEventListener("keydown", habdleResetPress);
     return () => {
       window.removeEventListener("keydown", handleSpacePress);
+      window.removeEventListener("keydown", habdleResetPress);
     };
   }, []);
 
   function handleReset() {
-    setTimerCount(0);
-    setTimer(false);
+    setTime(0);
+    setIsRunning(false);
   }
 
   function handleSaveTime() {
-    // Save time to local storage in seconds
-    if (timerCount < bestTime!) {
-      localStorage.setItem("best-time", JSON.stringify(timerCount));
-      setBestTime(timerCount);
+    if (bestTime === null || time < bestTime) {
+      localStorage.setItem("best-time", JSON.stringify(time));
+      setBestTime(time);
+    } else {
+      alert("New time is not better than the current best time.");
     }
   }
 
+  function formatTime(timeInMilliseconds: number) {
+    const minutes = Math.floor(timeInMilliseconds / 60000);
+    const seconds = Math.floor((timeInMilliseconds % 60000) / 1000);
+    const milliseconds = timeInMilliseconds % 1000;
+
+    return `${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}.${milliseconds.toString().padStart(3, "0")}`;
+  }
+
   return (
-    <div className='bg-gray-900 h-dvh text-white'>
+    <div className='bg-gray-900 min-h-screen text-white px-4 sm:px-6 lg:px-8'>
       <div className='flex flex-col justify-center items-center pt-16 gap-8'>
-        <h1 className='text-4xl text-white'>RUBIKS TIMER</h1>
-        <div className='flex gap-4'>
+        <h1 className='text-3xl sm:text-4xl lg:text-5xl text-center'>
+          RUBIK'S TIMER
+        </h1>
+        <div className='flex flex-wrap justify-center gap-4'>
           <button
-            // ref={startBtn}
-            className={`px-4 py-2 rounded ${
-              isTimerSet ? "bg-red-500 " : "bg-green-900"
+            className={`px-4 py-2 rounded text-sm sm:text-base ${
+              isRunning ? "bg-red-500" : "bg-green-900"
             }`}
-            onClick={() => setTimer(!isTimerSet)}
+            onClick={() => setIsRunning(!isRunning)}
           >
-            {isTimerSet ? "STOP" : "START"}
+            {isRunning ? "STOP" : "START"}
           </button>
           <button
-            disabled={timerCount === 0}
-            className={`px-4 py-2 rounded border-black border-solid border-2 ${
-              timerCount === 0 ? "bg-slate-200 text-gray-500" : "bg-white"
-            }`}
+            disabled={time === 0}
+            className={`px-4 py-2 rounded border border-black ${
+              time === 0
+                ? "bg-slate-200 text-gray-500 cursor-not-allowed"
+                : "bg-white text-black"
+            } text-sm sm:text-base`}
             onClick={handleReset}
           >
             RESET
           </button>
 
-          {timerCount > 0 && !isTimerSet ? (
+          {time > 0 && !isRunning && (
             <button
               onClick={handleSaveTime}
-              className='bg-slate-800 px-4 py-2 rounded'
+              className='bg-slate-800 px-4 py-2 rounded text-sm sm:text-base'
             >
               NEW BEST TIME
             </button>
-          ) : (
-            ""
           )}
         </div>
-        {timerCount < 60 ? (
-          <div className='text-9xl '>{timerCount} sec</div>
-        ) : (
-          <div className='text-9xl'>{(timerCount / 60).toFixed(2)} min</div>
-        )}
+        <div className='text-6xl sm:text-7xl lg:text-9xl text-center'>
+          {formatTime(time)}
+        </div>
 
         <div className='flex flex-col items-center gap-4'>
-          <h2 className='text-4xl'>Best Time</h2>
-          {/* {bestTime} sec */}
-          {bestTime !== null && bestTime < 60 ? (
-            <div className='text-3xl'>{bestTime} sec</div>
+          <h2 className='text-2xl sm:text-4xl text-center'>Best Time</h2>
+          {bestTime !== null ? (
+            <div className='text-xl sm:text-3xl text-center'>
+              {formatTime(bestTime)}
+            </div>
           ) : (
-            <div className='text-3xl'>{(bestTime! / 60).toFixed(2)} min</div>
+            <div className='text-xl sm:text-3xl text-center'>
+              No best time yet
+            </div>
           )}
         </div>
       </div>
